@@ -45,3 +45,135 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<style>
+  .captcha {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: Arial, sans-serif;
+    user-select: none;
+  }
+  .captcha canvas {
+    border: 1px solid #c5d0e6;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    display: block;
+  }
+  .captcha input {
+    width: 70px;
+    padding: 6px 8px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 1px solid #c5d0e6;
+    border-radius: 6px;
+    outline: none;
+  }
+  .captcha input:focus { border-color: #5b8def; }
+  .captcha button {
+    width: 28px; height: 28px;
+    border: 1px solid #c5d0e6;
+    border-radius: 6px;
+    background: #f5f8ff;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .captcha button:hover { background: #e6eeff; }
+  .captcha .err { border-color: #d93025 !important; }
+</style>
+</head>
+<body>
+
+<div class="captcha" id="captcha">
+  <canvas id="c" width="120" height="40" title="Обновить"></canvas>
+  <input id="ci" maxlength="4" placeholder="Код" autocomplete="off">
+  <button id="cr" type="button" title="Обновить">⟳</button>
+</div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const input = document.getElementById('ci');
+  const btn = document.getElementById('cr');
+  const box = document.getElementById('captcha');
+
+  const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  const r = (a, b) => Math.random() * (b - a) + a;
+  const ri = (a, b) => Math.floor(r(a, b + 1));
+
+  function draw() {
+    code = '';
+    for (let i = 0; i < 4; i++) code += CHARS[ri(0, CHARS.length - 1)];
+
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // фон
+    ctx.fillStyle = '#f0f4ff';
+    ctx.fillRect(0, 0, w, h);
+
+    // символы
+    const step = w / (code.length + 1);
+    for (let i = 0; i < code.length; i++) {
+      ctx.save();
+      ctx.translate(step * (i + 1), h / 2 + r(-4, 4));
+      ctx.rotate(r(-0.3, 0.3));
+      ctx.font = `bold ${22 + ri(-3, 3)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = `hsl(${ri(0, 360)},70%,45%)`;
+      ctx.fillText(code[i], 0, 0);
+      ctx.restore();
+    }
+
+    // шум — пара линий и точки
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = `rgba(${ri(80,200)},${ri(80,200)},${ri(80,200)},.6)`;
+      ctx.beginPath();
+      ctx.moveTo(r(0, w), r(0, h));
+      ctx.lineTo(r(0, w), r(0, h));
+      ctx.stroke();
+    }
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(${ri(0,255)},${ri(0,255)},${ri(0,255)},.6)`;
+      ctx.fillRect(r(0, w), r(0, h), 1, 1);
+    }
+  }
+
+  function refresh() {
+    draw();
+    input.value = '';
+    input.classList.remove('err');
+  }
+
+  function validate() {
+    const ok = input.value.trim().toUpperCase() === code;
+    input.classList.toggle('err', !ok);
+    if (!ok) { refresh(); }
+    return ok;
+  }
+
+  btn.addEventListener('click', refresh);
+  canvas.addEventListener('click', refresh);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') validate(); });
+
+  window.Captcha = {
+    validate,
+    isValid: () => input.value.trim().toUpperCase() === code,
+    refresh
+  };
+
+  draw();
+})();
+</script>
+
+</body>
+</html>
